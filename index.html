@@ -342,7 +342,7 @@
     currentFriday.setHours(0, 0, 0, 0);
 
     // 14日（2週間）周期の基準（2026年1月2日は金曜日）
-    const baseDate = new Date('2026-01-02T00:00:00');
+    const baseDate = new Date('2026-01-08T00:00:00');
     const msDiff = currentFriday.getTime() - baseDate.getTime();
     const daysDiff = Math.floor(msDiff / (1000 * 60 * 60 * 24));
     
