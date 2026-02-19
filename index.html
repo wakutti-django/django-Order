@@ -132,7 +132,7 @@
         <input type="text" id="f-qty" placeholder="例：2">
       </div>
       <div class="form-group">
-        <label>お客様名 ＊</label>
+        <label>お客様番号 ＊</label>
         <input type="text" id="f-customer" placeholder="例：山田様">
       </div>
       <div class="form-group" style="grid-column: span 2">
@@ -241,7 +241,7 @@
     const qty      = document.getElementById('f-qty').value.trim();
     const customer = document.getElementById('f-customer').value.trim();
     const memo     = document.getElementById('f-memo').value.trim();
-    if (!product || !qty || !customer) { showToast('⚠ 商品名・数量・お客様名は必須です'); return; }
+    if (!product || !qty || !customer) { showToast('⚠ 商品名・数量・お客様番号は必須です'); return; }
     await push(ordersRef, {
       productName: product,
       modelNumber: model,
