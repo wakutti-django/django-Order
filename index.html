@@ -327,24 +327,26 @@
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
- // Weekly (2週間ごと・木曜日始まり)
+  // Weekly (2週間ごと・木曜日始まり：木〜翌々週水曜)
   function getWeekKey(iso) {
     const d = new Date(iso);
     const day = d.getDay(); // 0(日)〜6(土)
     
-    // 木曜日(4)を基準にするための計算
-    // 現在の日付から、直近の木曜日までの日数を引きます
-    const diffToThursday = (day >= 4) ? (day - 4) : (day + 3);
-    const thursday = new Date(d);
-    thursday.setDate(d.getDate() - diffToThursday);
-    thursday.setHours(0, 0, 0, 0);
+    // 木曜日(4)を起点にするための調整
+    // 今日の曜日から見て、一番近い「前の木曜日」を探します
+    let diffToThursday = day - 4;
+    if (diffToThursday < 0) diffToThursday += 7;
+    
+    const currentThursday = new Date(d);
+    currentThursday.setDate(d.getDate() - diffToThursday);
+    currentThursday.setHours(0, 0, 0, 0);
 
-    // 14日（2週間）ごとの周期の起点
-    // 2026年1月1日（木）を基準として2週間サイクルを計算します
+    // 14日（2週間）周期の基準を固定します（例：2026年1月1日は木曜日）
     const baseDate = new Date('2026-01-01T00:00:00');
-    const msDiff = thursday.getTime() - baseDate.getTime();
+    const msDiff = currentThursday.getTime() - baseDate.getTime();
     const daysDiff = Math.floor(msDiff / (1000 * 60 * 60 * 24));
     
+    // 14で割って余りが出る場合は、もう7日引いて周期を合わせる調整
     const periodStartDays = Math.floor(daysDiff / 14) * 14;
     const periodStart = new Date(baseDate);
     periodStart.setDate(baseDate.getDate() + periodStartDays);
@@ -355,7 +357,7 @@
   function getWeekLabel(wk) {
     const d = new Date(wk);
     const end = new Date(d); 
-    end.setDate(d.getDate() + 13); // 13日後（計14日間）を表示
+    end.setDate(d.getDate() + 13); // 14日間（木曜から13日後は水曜日）
     const days = ['日','月','火','水','木','金','土'];
     return `${d.getMonth()+1}/${d.getDate()}（${days[d.getDay()]}）〜 ${end.getMonth()+1}/${end.getDate()}（${days[end.getDay()]}）`;
   }
