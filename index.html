@@ -327,40 +327,47 @@
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  // Weekly (2週間ごと・木曜日始まり：木〜翌々週水曜)
+  // Weekly (2週間ごと・木曜日始まりに完全固定)
   function getWeekKey(iso) {
+    // 日本時間での日付を取得
     const d = new Date(iso);
-    const day = d.getDay(); // 0(日)〜6(土)
+    const jstDate = new Date(d.getTime() + (9 * 60 * 60 * 1000)); 
+    const day = jstDate.getUTCDay(); // 0(日)〜6(土)
     
-    // 木曜日(4)を起点にするための調整
-    // 現在の曜日から「前の木曜日」が何日前かを計算します
-    let diffToThursday = day - 4;
-    if (diffToThursday < 0) diffToThursday += 7;
+    // 木曜日(4)を起点にする計算
+    let diff = day - 4;
+    if (diff < 0) diff += 7;
     
-    const currentThursday = new Date(d);
-    currentThursday.setDate(d.getDate() - diffToThursday);
-    currentThursday.setHours(0, 0, 0, 0); // 時間を0時に固定してズレを防ぐ
-
-    // 2週間（14日）周期の基準
-    // 2026年1月1日は木曜日です。ここを動かさず、周期だけ計算します
-    const baseDate = new Date('2026-01-01T00:00:00');
-    const msDiff = currentThursday.getTime() - baseDate.getTime();
-    const daysDiff = Math.floor(msDiff / (1000 * 60 * 60 * 24));
+    // 直近の木曜日を算出
+    const thursday = new Date(jstDate);
+    thursday.setUTCDate(jstDate.getUTCDate() - diff);
     
-    // 14日周期の開始日（1週間ズレを修正するために+7日する調整を入れました）
-    const periodStartDays = Math.floor(daysDiff / 14) * 14;
-    const periodStart = new Date(baseDate);
-    periodStart.setDate(baseDate.getDate() + periodStartDays + 7); // ここで1週間分を微調整
+    // 2026/01/01(木)を基準点にする
+    const base = new Date('2026-01-01T00:00:00Z');
+    const diffTime = thursday.getTime() - base.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
-    return periodStart.toISOString().slice(0, 10);
+    // 14日周期の開始日を決定（1週間ずれる場合はここを調整）
+    let periodStartDays = Math.floor(diffDays / 14) * 14;
+    
+    // 現在の運用に合わせて1週間分調整
+    const finalStart = new Date(base);
+    finalStart.setUTCDate(base.getUTCDate() + periodStartDays + 7);
+    
+    return finalStart.toISOString().slice(0, 10);
   }
 
   function getWeekLabel(wk) {
-    const d = new Date(wk);
-    const end = new Date(d); 
-    end.setDate(d.getDate() + 13); // 木曜から13日後は必ず水曜日
-    const days = ['日','月','火','水','木','金','土'];
-    return `${d.getMonth()+1}/${d.getDate()}（${days[d.getDay()]}）〜 ${end.getMonth()+1}/${end.getDate()}（${days[end.getDay()]}）`;
+    const d = new Date(wk + "T00:00:00Z"); // 文字列を日付オブジェクトに変換
+    const end = new Date(d);
+    end.setUTCDate(d.getUTCDate() + 13); // 13日後は水曜日
+    
+    const m1 = d.getUTCMonth() + 1;
+    const d1 = d.getUTCDate();
+    const m2 = end.getUTCMonth() + 1;
+    const d2 = end.getUTCDate();
+    
+    return `${m1}/${d1}（木）〜 ${m2}/${d2}（水）`;
   }
 
 
