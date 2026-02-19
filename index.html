@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>注文管理システム</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: #f8f7f4; color: #1a1a1a; min-height: 100vh; }
+
+  .header { background: #1c1917; padding: 0 16px; height: 52px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .header-title { color: #fff; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .mode-switcher { background: #292524; border-radius: 8px; padding: 4px; display: flex; gap: 4px; }
+  .mode-btn { padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; transition: all 0.15s; }
+  .mode-btn.active { background: #f59e0b; color: #1c1917; }
+  .mode-btn.inactive { background: transparent; color: #a8a29e; }
+
+  .main { max-width: 700px; margin: 0 auto; padding: 16px; }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .stat-card { background: #fff; border-radius: 10px; padding: 12px 14px; border: 1px solid #e7e5e4; }
+  .stat-label { font-size: 11px; color: #78716c; margin-bottom: 2px; }
+  .stat-value { font-size: 26px; font-weight: 700; }
+
+  .btn { padding: 10px 18px; border-radius: 8px; border: none; font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit; }
+  .btn-primary { background: #f59e0b; color: #1c1917; }
+  .btn-secondary { background: #fff; color: #1c1917; border: 1px solid #d6d3d1; font-weight: 600; }
+  .btn-dark { background: #1c1917; color: #fff; }
+  .btn-danger { background: #fee2e2; color: #dc2626; padding: 6px 12px; font-size: 12px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
+  .btn-green { background: #10b981; color: #fff; padding: 8px 14px; font-size: 13px; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
+  .btn-purple { background: #6366f1; color: #fff; padding: 8px 14px; font-size: 13px; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; font-family: inherit; }
+
+  .action-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .sync-status { font-size: 12px; color: #10b981; margin-left: auto; display: flex; align-items: center; gap: 4px; }
+  .sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; }
+
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filter-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid #d6d3d1; cursor: pointer; font-size: 12px; font-family: inherit; background: #fff; color: #78716c; }
+  .filter-btn.active { background: #1c1917; color: #fff; border-color: #1c1917; font-weight: 700; }
+
+  .form-card { background: #fff; border-radius: 12px; border: 1px solid #e7e5e4; padding: 16px; margin-bottom: 14px; }
+  .form-title { font-weight: 700; font-size: 15px; margin-bottom: 14px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-group label { font-size: 12px; color: #78716c; display: block; margin-bottom: 4px; }
+  .form-group input, .form-group textarea { width: 100%; padding: 9px 12px; border: 1px solid #d6d3d1; border-radius: 6px; font-size: 14px; font-family: inherit; outline: none; -webkit-appearance: none; }
+  .form-group input:focus, .form-group textarea:focus { border-color: #f59e0b; }
+  .form-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+  .order-list { display: flex; flex-direction: column; gap: 8px; }
+  .order-card { background: #fff; border-radius: 12px; border: 1px solid #e7e5e4; padding: 14px 16px; border-left: 4px solid; }
+  .order-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .order-info { flex: 1; }
+  .order-name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
+  .order-model { font-size: 12px; color: #78716c; background: #f5f5f4; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-left: 6px; }
+  .badge { font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600; display: inline-block; margin-top: 4px; }
+  .order-meta { margin-top: 6px; font-size: 13px; color: #57534e; display: flex; gap: 12px; flex-wrap: wrap; }
+  .order-memo { margin-top: 6px; font-size: 13px; color: #78716c; background: #fafaf9; padding: 4px 10px; border-radius: 4px; }
+  .order-time { font-size: 11px; color: #a8a29e; margin-top: 4px; }
+  .order-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; flex-shrink: 0; }
+
+  .empty { text-align: center; padding: 60px 20px; color: #a8a29e; background: #fff; border-radius: 12px; border: 1px solid #e7e5e4; }
+  .empty-icon { font-size: 40px; margin-bottom: 8px; }
+
+  .loading { text-align: center; padding: 60px 20px; color: #a8a29e; }
+  .spinner { width: 32px; height: 32px; border: 3px solid #e7e5e4; border-top-color: #f59e0b; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; justify-content: center; z-index: 100; }
+  .modal-overlay.center { align-items: center; padding: 16px; }
+  .modal { background: #fff; border-radius: 16px 16px 0 0; width: 100%; max-height: 85vh; overflow-y: auto; padding: 20px; }
+  .modal.center { border-radius: 16px; max-width: 540px; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .modal-title { font-weight: 700; font-size: 17px; }
+  .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: #78716c; padding: 0 4px; }
+
+  .week-select { width: 100%; padding: 9px 12px; border: 1px solid #d6d3d1; border-radius: 6px; font-size: 14px; font-family: inherit; margin-bottom: 14px; }
+  .weekly-preview { background: #fafaf9; border-radius: 8px; padding: 14px; font-family: monospace; font-size: 12px; white-space: pre-wrap; margin-bottom: 14px; border: 1px solid #e7e5e4; line-height: 1.8; max-height: 40vh; overflow-y: auto; }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-actions .btn { flex: 1; text-align: center; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1c1917; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">
+    <div class="dot"></div>注文管理システム
+  </div>
+  <div class="mode-switcher">
+    <button class="mode-btn active" id="btn-store" onclick="setMode('store')">家具店</button>
+    <button class="mode-btn inactive" id="btn-wholesaler" onclick="setMode('wholesaler')">問屋</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="stats">
+    <div class="stat-card"><div class="stat-label">全注文</div><div class="stat-value" id="stat-total" style="color:#1c1917">-</div></div>
+    <div class="stat-card"><div class="stat-label">未確認</div><div class="stat-value" id="stat-pending" style="color:#f59e0b">-</div></div>
+    <div class="stat-card"><div class="stat-label">押さえ済み</div><div class="stat-value" id="stat-reserved" style="color:#10b981">-</div></div>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn btn-primary" id="add-btn" onclick="toggleForm()">＋ 注文を追加</button>
+    <button class="btn btn-secondary" onclick="openWeekly()">📋 週次リスト</button>
+    <div class="sync-status" id="sync-status"><div class="sync-dot"></div>リアルタイム同期中</div>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all', this)">すべて</button>
+    <button class="filter-btn" onclick="setFilter('pending', this)">未確認</button>
+    <button class="filter-btn" onclick="setFilter('reserved', this)">押さえ済み</button>
+    <button class="filter-btn" onclick="setFilter('ordered', this)">注文済み</button>
+  </div>
+
+  <div class="form-card" id="order-form" style="display:none">
+    <div class="form-title">新規注文登録</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>商品名 ＊</label>
+        <input type="text" id="f-product" placeholder="例：ダイニングテーブル">
+      </div>
+      <div class="form-group">
+        <label>型番</label>
+        <input type="text" id="f-model" placeholder="例：DT-001">
+      </div>
+      <div class="form-group">
+        <label>数量 ＊</label>
+        <input type="text" id="f-qty" placeholder="例：2">
+      </div>
+      <div class="form-group">
+        <label>お客様名 ＊</label>
+        <input type="text" id="f-customer" placeholder="例：山田様">
+      </div>
+      <div class="form-group" style="grid-column: span 2">
+        <label>備考</label>
+        <input type="text" id="f-memo" placeholder="カラー・サイズ指定など">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-dark" onclick="addOrder()">登録する</button>
+      <button class="btn btn-secondary" onclick="toggleForm()">キャンセル</button>
+    </div>
+  </div>
+
+  <div id="order-list">
+    <div class="loading"><div class="spinner"></div>接続中...</div>
+  </div>
+</div>
+
+<!-- Weekly modal -->
+<div class="modal-overlay center" id="weekly-modal" style="display:none" onclick="closeWeeklyOutside(event)">
+  <div class="modal center">
+    <div class="modal-header">
+      <div class="modal-title">📋 週次注文リスト</div>
+      <button class="modal-close" onclick="closeWeekly()">✕</button>
+    </div>
+    <label style="font-size:12px;color:#78716c;display:block;margin-bottom:6px">対象週を選択</label>
+    <select class="week-select" id="week-select" onchange="updatePreview()"></select>
+    <div class="weekly-preview" id="weekly-preview">週を選択してください</div>
+    <div class="modal-actions">
+      <button class="btn btn-dark" id="copy-btn" onclick="copyText()">📋 テキストをコピー</button>
+      <button class="btn btn-secondary" onclick="window.print()">🖨️ 印刷</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getDatabase, ref, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDx6oJnre3L1UWcYzeKFzPjaLo5_E5qZLc",
+    authDomain: "django-interior.firebaseapp.com",
+    databaseURL: "https://django-interior-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "django-interior",
+    storageBucket: "django-interior.firebasestorage.app",
+    messagingSenderId: "600675642337",
+    appId: "1:600675642337:web:2e420e6553093600f200a0"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  const ordersRef = ref(db, 'orders');
+
+  const STATUS = {
+    pending:  { label: '未確認',    color: '#f59e0b', bg: '#fef3c7' },
+    reserved: { label: '押さえ済み', color: '#10b981', bg: '#d1fae5' },
+    ordered:  { label: '注文済み',  color: '#6366f1', bg: '#e0e7ff' },
+  };
+
+  let mode = 'store';
+  let orders = {};
+  let filterStatus = 'all';
+  let formOpen = false;
+
+  // リアルタイム同期
+  onValue(ordersRef, (snapshot) => {
+    orders = snapshot.val() || {};
+    render();
+    document.getElementById('sync-status').innerHTML = '<div class="sync-dot"></div>リアルタイム同期中';
+  }, (error) => {
+    document.getElementById('sync-status').innerHTML = '<span style="color:#ef4444">⚠ 接続エラー</span>';
+  });
+
+  window.setMode = function(m) {
+    mode = m;
+    document.getElementById('btn-store').className = 'mode-btn ' + (m === 'store' ? 'active' : 'inactive');
+    document.getElementById('btn-wholesaler').className = 'mode-btn ' + (m === 'wholesaler' ? 'active' : 'inactive');
+    document.getElementById('add-btn').style.display = m === 'store' ? '' : 'none';
+    if (formOpen && m !== 'store') window.toggleForm();
+    render();
+  };
+
+  window.setFilter = function(s, btn) {
+    filterStatus = s;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  };
+
+  window.toggleForm = function() {
+    formOpen = !formOpen;
+    document.getElementById('order-form').style.display = formOpen ? '' : 'none';
+    if (!formOpen) clearForm();
+  };
+
+  function clearForm() {
+    ['f-product','f-model','f-qty','f-customer','f-memo'].forEach(id => document.getElementById(id).value = '');
+  }
+
+  window.addOrder = async function() {
+    const product  = document.getElementById('f-product').value.trim();
+    const model    = document.getElementById('f-model').value.trim();
+    const qty      = document.getElementById('f-qty').value.trim();
+    const customer = document.getElementById('f-customer').value.trim();
+    const memo     = document.getElementById('f-memo').value.trim();
+    if (!product || !qty || !customer) { showToast('⚠ 商品名・数量・お客様名は必須です'); return; }
+    await push(ordersRef, {
+      productName: product,
+      modelNumber: model,
+      quantity: qty,
+      customerName: customer,
+      memo,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    });
+    showToast('✓ 注文を登録しました');
+    window.toggleForm();
+  };
+
+  window.updateStatus = async function(id, status) {
+    await update(ref(db, 'orders/' + id), { status });
+    const label = STATUS[status]?.label || status;
+    showToast(`✓ 「${label}」に更新しました`);
+  };
+
+  window.deleteOrder = async function(id) {
+    if (!confirm('この注文を削除しますか？')) return;
+    await remove(ref(db, 'orders/' + id));
+    showToast('削除しました');
+  };
+
+  function fmtDT(iso) {
+    const d = new Date(iso);
+    return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+
+  function render() {
+    const arr = Object.entries(orders).map(([id, o]) => ({ id, ...o }))
+      .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    document.getElementById('stat-total').textContent   = arr.length;
+    document.getElementById('stat-pending').textContent  = arr.filter(o => o.status === 'pending').length;
+    document.getElementById('stat-reserved').textContent = arr.filter(o => o.status === 'reserved').length;
+
+    const filtered = filterStatus === 'all' ? arr : arr.filter(o => o.status === filterStatus);
+    const list = document.getElementById('order-list');
+
+    if (filtered.length === 0) {
+      list.innerHTML = `<div class="empty"><div class="empty-icon">📦</div><div>注文がありません</div></div>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map(o => {
+      const s = STATUS[o.status];
+      let actionBtns = '';
+      if (mode === 'wholesaler' && o.status === 'pending')
+        actionBtns = `<button class="btn-green" onclick="updateStatus('${o.id}','reserved')">押さえ済みにする</button>`;
+      else if (mode === 'wholesaler' && o.status === 'reserved')
+        actionBtns = `<span style="font-size:11px;color:#10b981">✓ 対応済み</span>`;
+      else if (mode === 'store' && o.status === 'reserved')
+        actionBtns = `<button class="btn-purple" onclick="updateStatus('${o.id}','ordered')">注文済みにする</button>`;
+
+      const deleteBtn = mode === 'store'
+        ? `<button class="btn-danger" onclick="deleteOrder('${o.id}')">削除</button>` : '';
+
+      return `
+        <div class="order-card" style="border-left-color:${s.color}">
+          <div class="order-top">
+            <div class="order-info">
+              <div class="order-name">${esc(o.productName)}${o.modelNumber ? `<span class="order-model">${esc(o.modelNumber)}</span>` : ''}</div>
+              <span class="badge" style="background:${s.bg};color:${s.color}">${s.label}</span>
+              <div class="order-meta">
+                <span>数量: <strong>${esc(o.quantity)}</strong></span>
+                <span>お客様: <strong>${esc(o.customerName)}</strong></span>
+              </div>
+              ${o.memo ? `<div class="order-memo">備考: ${esc(o.memo)}</div>` : ''}
+              <div class="order-time">登録: ${fmtDT(o.createdAt)}</div>
+            </div>
+            <div class="order-actions">
+              ${actionBtns}
+              ${deleteBtn}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Weekly
+  function getWeekKey(iso) {
+    const d = new Date(iso);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(new Date(iso).setDate(diff)).toISOString().slice(0,10);
+  }
+  function getWeekLabel(wk) {
+    const d = new Date(wk);
+    const end = new Date(d); end.setDate(d.getDate() + 6);
+    const days = ['日','月','火','水','木','金','土'];
+    return `${d.getMonth()+1}/${d.getDate()}（${days[d.getDay()]}）〜 ${end.getMonth()+1}/${end.getDate()}（${days[end.getDay()]}）`;
+  }
+
+  window.openWeekly = function() {
+    const arr = Object.values(orders);
+    const weeks = [...new Set(arr.map(o => getWeekKey(o.createdAt)))].sort().reverse();
+    if (weeks.length === 0) weeks.push(getWeekKey(new Date().toISOString()));
+    const sel = document.getElementById('week-select');
+    sel.innerHTML = weeks.map(w => `<option value="${w}">${getWeekLabel(w)}</option>`).join('');
+    window.updatePreview();
+    document.getElementById('weekly-modal').style.display = '';
+  };
+
+  window.closeWeekly = function() { document.getElementById('weekly-modal').style.display = 'none'; };
+  window.closeWeeklyOutside = function(e) { if (e.target.id === 'weekly-modal') window.closeWeekly(); };
+
+  window.updatePreview = function() {
+    const wk = document.getElementById('week-select').value;
+    document.getElementById('weekly-preview').textContent = wk ? generateText(wk) : '週を選択してください';
+  };
+
+  function generateText(wk) {
+    const arr = Object.values(orders).filter(o => getWeekKey(o.createdAt) === wk)
+      .sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const now = new Date();
+    const lines = [
+      `【週次注文リスト】`,
+      `対象期間: ${getWeekLabel(wk)}`,
+      `作成日時: ${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`,
+      '─'.repeat(36), ''
+    ];
+    arr.forEach((o, i) => {
+      lines.push(`${i+1}. ${o.productName}${o.modelNumber ? `（${o.modelNumber}）` : ''}`);
+      lines.push(`   数量: ${o.quantity}　お客様: ${o.customerName}`);
+      if (o.memo) lines.push(`   備考: ${o.memo}`);
+      lines.push(`   ステータス: ${STATUS[o.status]?.label || o.status}`);
+      lines.push('');
+    });
+    lines.push('─'.repeat(36));
+    lines.push(`合計 ${arr.length} 件`);
+    return lines.join('\n');
+  }
+
+  window.copyText = function() {
+    const wk = document.getElementById('week-select').value;
+    if (!wk) return;
+    const text = generateText(wk);
+    navigator.clipboard.writeText(text).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }).finally ? null : null;
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ コピー完了！';
+    setTimeout(() => btn.textContent = '📋 テキストをコピー', 2000);
+    showToast('✓ クリップボードにコピーしました');
+  };
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // 初期表示
+  window.setMode('store');
+</script>
+</body>
+</html>
