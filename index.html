@@ -85,7 +85,6 @@
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1c1917; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
   .toast.show { opacity: 1; }
 
-  /* ログイン画面 */
   .login-screen { position: fixed; inset: 0; background: #f8f7f4; display: flex; align-items: center; justify-content: center; z-index: 1000; }
   .login-card { background: #fff; border-radius: 16px; padding: 32px; max-width: 420px; width: 90%; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
   .login-header { text-align: center; margin-bottom: 32px; }
@@ -103,7 +102,6 @@
 </head>
 <body>
 
-<!-- ログイン画面 -->
 <div class="login-screen" id="login-screen">
   <div class="login-card">
     <div class="login-header">
@@ -132,7 +130,6 @@
   </div>
 </div>
 
-<!-- メイン画面 -->
 <div id="main-app" style="display:none">
   <div class="header">
     <div class="header-title">
@@ -248,17 +245,15 @@
     ordered:  { label: '注文済み',  color: '#6366f1', bg: '#e0e7ff' },
   };
 
-  // パスワードハッシュ（SHA-256）
-  const STORE_HASH = 'e3d704f3542b44a621ebed70dc0efe13224b8aa65f11c25a142f6ad3e70fd324'; //django24
-  const WHOLESALER_HASH = '7c6a61c68ef8b9b6b061b28c348bc1863dcc9c7a4d7614d4c1c2968e5bfb5242'; //iwanaga
+  const STORE_HASH = 'b6d8a39cad12748e450a36953d0abf9b897e61f6ed92fe4dc12874c84b8aba08';
+  const WHOLESALER_HASH = '0aa48abe93d27b8552d1733dd35270414d480ac071279fdfe14b7116ca7e82c3';
 
-  let userRole = null; // 'store', 'wholesaler', 'viewer'
+  let userRole = null;
   let mode = 'store';
   let orders = {};
   let filterStatus = 'all';
   let formOpen = false;
 
-  // SHA-256ハッシュ関数
   async function sha256(str) {
     const buffer = new TextEncoder().encode(str);
     const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
@@ -266,7 +261,6 @@
     return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
-  // ログイン機能
   window.loginStore = async function() {
     const password = document.getElementById('store-password').value;
     const hash = await sha256(password);
@@ -342,14 +336,12 @@
     }
   }
 
-  // セッション復元
   const savedRole = sessionStorage.getItem('userRole');
   if (savedRole) {
     userRole = savedRole;
     showMainApp();
   }
 
-  // Firebase接続
   onValue(ordersRef, (snapshot) => {
     orders = snapshot.val() || {};
     render();
