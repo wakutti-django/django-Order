@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>DJANGO注文管理システム</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1c1917">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DJANGO注文">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: #f8f7f4; color: #1a1a1a; min-height: 100vh; }
@@ -57,6 +63,7 @@
   .order-name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
   .order-model { font-size: 12px; color: #78716c; background: #f5f5f4; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-left: 6px; }
   .badge { font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600; display: inline-block; margin-top: 4px; }
+  .delivery-date { font-size: 10px; color: #10b981; font-weight: 600; margin-left: 4px; background: #d1fae5; padding: 2px 6px; border-radius: 4px; }
   .order-meta { margin-top: 6px; font-size: 13px; color: #57534e; display: flex; gap: 12px; flex-wrap: wrap; }
   .order-memo { margin-top: 6px; font-size: 13px; color: #78716c; background: #fafaf9; padding: 4px 10px; border-radius: 4px; }
   .order-time { font-size: 11px; color: #a8a29e; margin-top: 4px; }
@@ -98,6 +105,10 @@
   .login-btn-primary { background: #f59e0b; color: #1c1917; }
   .login-btn-secondary { background: #fff; color: #1c1917; border: 1px solid #d6d3d1; }
   .error-msg { color: #dc2626; font-size: 12px; margin-top: 8px; display: none; }
+
+  .date-input-group { margin-bottom: 16px; }
+  .date-input-group label { font-size: 13px; color: #78716c; display: block; margin-bottom: 8px; font-weight: 600; }
+  .date-input-group input[type="date"] { width: 100%; padding: 10px 14px; border: 1px solid #d6d3d1; border-radius: 8px; font-size: 14px; font-family: inherit; }
 </style>
 </head>
 <body>
@@ -203,6 +214,25 @@
   </div>
 </div>
 
+<!-- 入荷予定日入力モーダル -->
+<div class="modal-overlay center" id="delivery-date-modal" style="display:none">
+  <div class="modal center">
+    <div class="modal-header">
+      <div class="modal-title">📦 入荷予定日を入力</div>
+      <button class="modal-close" onclick="closeDeliveryDateModal()">✕</button>
+    </div>
+    <div class="date-input-group">
+      <label>入荷予定日</label>
+      <input type="date" id="delivery-date-input">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-dark" onclick="confirmDeliveryDate()">確定</button>
+      <button class="btn btn-secondary" onclick="closeDeliveryDateModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- 週次リストモーダル -->
 <div class="modal-overlay center" id="weekly-modal" style="display:none" onclick="closeWeeklyOutside(event)">
   <div class="modal center">
     <div class="modal-header">
@@ -220,6 +250,16 @@
 </div>
 
 <div class="toast" id="toast"></div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js')
+      .then(reg => console.log('Service Worker registered'))
+      .catch(err => console.log('Service Worker registration failed'));
+  });
+}
+</script>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -253,6 +293,7 @@
   let orders = {};
   let filterStatus = 'all';
   let formOpen = false;
+  let pendingOrderId = null; // 入荷予定日設定待ちの注文ID
 
   async function sha256(str) {
     const buffer = new TextEncoder().encode(str);
@@ -404,8 +445,47 @@
     window.toggleForm();
   };
 
+  // 入荷予定日入力モーダルを開く
+  window.openDeliveryDateModal = function(orderId) {
+    pendingOrderId = orderId;
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('delivery-date-input').value = today;
+    document.getElementById('delivery-date-modal').style.display = '';
+  };
+
+  // 入荷予定日入力モーダルを閉じる
+  window.closeDeliveryDateModal = function() {
+    pendingOrderId = null;
+    document.getElementById('delivery-date-modal').style.display = 'none';
+  };
+
+  // 入荷予定日を確定
+  window.confirmDeliveryDate = async function() {
+    const deliveryDate = document.getElementById('delivery-date-input').value;
+    if (!deliveryDate) {
+      showToast('⚠ 入荷予定日を選択してください');
+      return;
+    }
+    if (pendingOrderId) {
+      await update(ref(db, 'orders/' + pendingOrderId), { 
+        status: 'reserved',
+        deliveryDate: deliveryDate
+      });
+      showToast('✓ 「押さえ済み」に更新しました');
+      closeDeliveryDateModal();
+    }
+  };
+
   window.updateStatus = async function(id, status) {
     if (userRole === 'viewer') return;
+    
+    // 問屋が「押さえ済み」にする場合は入荷予定日を入力
+    if (status === 'reserved' && userRole === 'wholesaler') {
+      openDeliveryDateModal(id);
+      return;
+    }
+    
+    // それ以外は通常の更新
     await update(ref(db, 'orders/' + id), { status });
     const label = STATUS[status]?.label || status;
     showToast(`✓ 「${label}」に更新しました`);
@@ -421,6 +501,12 @@
   function fmtDT(iso) {
     const d = new Date(iso);
     return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+
+  function fmtDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return `${d.getMonth()+1}/${d.getDate()}`;
   }
 
   function render() {
@@ -456,12 +542,17 @@
       const deleteBtn = (mode === 'store' && userRole === 'store')
         ? `<button class="btn-danger" onclick="deleteOrder('${o.id}')">削除</button>` : '';
 
+      // 入荷予定日表示
+      const deliveryDateBadge = o.deliveryDate 
+        ? `<span class="delivery-date">${fmtDate(o.deliveryDate)}入荷</span>` 
+        : '';
+
       return `
         <div class="order-card" style="border-left-color:${s.color}">
           <div class="order-top">
             <div class="order-info">
               <div class="order-name">${esc(o.productName)}${o.modelNumber ? `<span class="order-model">${esc(o.modelNumber)}</span>` : ''}</div>
-              <span class="badge" style="background:${s.bg};color:${s.color}">${s.label}</span>
+              <span class="badge" style="background:${s.bg};color:${s.color}">${s.label}</span>${deliveryDateBadge}
               <div class="order-meta">
                 <span>数量: <strong>${esc(o.quantity)}</strong></span>
                 <span>お客様: <strong>${esc(o.customerName)}</strong></span>
@@ -531,6 +622,7 @@
     arr.forEach((o, i) => {
       lines.push(`${i+1}. ${o.productName}${o.modelNumber ? `（${o.modelNumber}）` : ''}`);
       lines.push(`   数量: ${o.quantity}　お客様: ${o.customerName}`);
+      if (o.deliveryDate) lines.push(`   入荷予定: ${fmtDate(o.deliveryDate)}`);
       if (o.memo) lines.push(`   備考: ${o.memo}`);
       lines.push(`   ステータス: ${STATUS[o.status]?.label || o.status}`);
       lines.push('');
