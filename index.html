@@ -4,12 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>DJANGO注文管理システム</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1c1917">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="DJANGO注文">
-<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Noto Sans JP', 'Hiragino Sans', sans-serif; background: #f8f7f4; color: #1a1a1a; min-height: 100vh; }
@@ -22,8 +16,6 @@
   .mode-btn { padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; font-family: inherit; transition: all 0.15s; }
   .mode-btn.active { background: #f59e0b; color: #1c1917; }
   .mode-btn.inactive { background: transparent; color: #a8a29e; }
-  .user-info { color: #a8a29e; font-size: 12px; display: flex; align-items: center; gap: 8px; }
-  .logout-btn { background: #292524; color: #a8a29e; border: 1px solid #44403c; padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: inherit; }
 
   .main { max-width: 700px; margin: 0 auto; padding: 16px; }
 
@@ -63,7 +55,6 @@
   .order-name { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
   .order-model { font-size: 12px; color: #78716c; background: #f5f5f4; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-left: 6px; }
   .badge { font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600; display: inline-block; margin-top: 4px; }
-  .delivery-date { font-size: 10px; color: #10b981; font-weight: 600; margin-left: 4px; background: #d1fae5; padding: 2px 6px; border-radius: 4px; }
   .order-meta { margin-top: 6px; font-size: 13px; color: #57534e; display: flex; gap: 12px; flex-wrap: wrap; }
   .order-memo { margin-top: 6px; font-size: 13px; color: #78716c; background: #fafaf9; padding: 4px 10px; border-radius: 4px; }
   .order-time { font-size: 11px; color: #a8a29e; margin-top: 4px; }
@@ -91,157 +82,85 @@
 
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1c1917; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
   .toast.show { opacity: 1; }
-
-  .login-screen { position: fixed; inset: 0; background: #f8f7f4; display: flex; align-items: center; justify-content: center; z-index: 1000; }
-  .login-card { background: #fff; border-radius: 16px; padding: 32px; max-width: 420px; width: 90%; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
-  .login-header { text-align: center; margin-bottom: 32px; }
-  .login-header h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
-  .login-header p { font-size: 14px; color: #78716c; }
-  .login-section { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid #e7e5e4; }
-  .login-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
-  .login-label { font-size: 13px; color: #78716c; margin-bottom: 10px; font-weight: 600; display: block; }
-  .login-input { width: 100%; padding: 10px 14px; border: 1px solid #d6d3d1; border-radius: 8px; font-size: 14px; font-family: inherit; margin-bottom: 10px; }
-  .login-btn { width: 100%; padding: 12px; border-radius: 8px; border: none; font-weight: 700; font-size: 14px; cursor: pointer; font-family: inherit; }
-  .login-btn-primary { background: #f59e0b; color: #1c1917; }
-  .login-btn-secondary { background: #fff; color: #1c1917; border: 1px solid #d6d3d1; }
-  .error-msg { color: #dc2626; font-size: 12px; margin-top: 8px; display: none; }
-
-  .date-input-group { margin-bottom: 16px; }
-  .date-input-group label { font-size: 13px; color: #78716c; display: block; margin-bottom: 8px; font-weight: 600; }
-  .date-input-group input[type="date"] { width: 100%; padding: 10px 14px; border: 1px solid #d6d3d1; border-radius: 8px; font-size: 14px; font-family: inherit; }
 </style>
 </head>
 <body>
 
-<div class="login-screen" id="login-screen">
-  <div class="login-card">
-    <div class="login-header">
-      <h1>DJANGO注文管理システム</h1>
-      <p>ログイン方法を選択してください</p>
-    </div>
-
-    <div class="login-section">
-      <label class="login-label">👤 店舗スタッフ</label>
-      <input type="password" class="login-input" id="store-password" placeholder="パスワードを入力">
-      <button class="login-btn login-btn-primary" onclick="loginStore()">ログイン</button>
-      <div class="error-msg" id="store-error">パスワードが違います</div>
-    </div>
-
-    <div class="login-section">
-      <label class="login-label">🏢 問屋</label>
-      <input type="password" class="login-input" id="wholesaler-password" placeholder="パスワードを入力">
-      <button class="login-btn login-btn-primary" onclick="loginWholesaler()">ログイン</button>
-      <div class="error-msg" id="wholesaler-error">パスワードが違います</div>
-    </div>
-
-    <div class="login-section">
-      <label class="login-label">👁️ 閲覧のみ</label>
-      <button class="login-btn login-btn-secondary" onclick="loginViewer()">パスワードなしで続ける</button>
-    </div>
+<div class="header">
+  <div class="header-title">
+    <div class="dot"></div>DJANGO注文管理システム
+  </div>
+  <div class="mode-switcher">
+    <button class="mode-btn active" id="btn-store" onclick="setMode('store')">店舗モード</button>
+    <button class="mode-btn inactive" id="btn-wholesaler" onclick="setMode('wholesaler')">問屋モード</button>
   </div>
 </div>
 
-<div id="main-app" style="display:none">
-  <div class="header">
-    <div class="header-title">
-      <div class="dot"></div>DJANGO注文管理システム
+<div class="main">
+  <div class="stats">
+    <div class="stat-card"><div class="stat-label">全注文</div><div class="stat-value" id="stat-total" style="color:#1c1917">-</div></div>
+    <div class="stat-card"><div class="stat-label">未確認</div><div class="stat-value" id="stat-pending" style="color:#f59e0b">-</div></div>
+    <div class="stat-card"><div class="stat-label">押さえ済み</div><div class="stat-value" id="stat-reserved" style="color:#10b981">-</div></div>
+  </div>
+
+  <div class="action-bar">
+    <button class="btn btn-primary" id="add-btn" onclick="toggleForm()">＋ 注文を追加</button>
+    <button class="btn btn-secondary" onclick="openWeekly()">📋 週次リスト</button>
+    <div class="sync-status" id="sync-status"><div class="sync-dot"></div>リアルタイム同期中</div>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter('all', this)">すべて</button>
+    <button class="filter-btn" onclick="setFilter('pending', this)">未確認</button>
+    <button class="filter-btn" onclick="setFilter('reserved', this)">押さえ済み</button>
+    <button class="filter-btn" onclick="setFilter('ordered', this)">注文済み</button>
+  </div>
+
+  <div class="form-card" id="order-form" style="display:none">
+    <div class="form-title">新規注文登録</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>商品名 ＊</label>
+        <input type="text" id="f-product" placeholder="例：デリア左カウチ">
+      </div>
+      <div class="form-group">
+        <label>カラー</label>
+        <input type="text" id="f-model" placeholder="例：CAMやCACAO等">
+      </div>
+      <div class="form-group">
+        <label>数量 ＊</label>
+        <input type="text" id="f-qty" placeholder="例：2">
+      </div>
+      <div class="form-group">
+        <label>お客様番号 ＊</label>
+        <input type="text" id="f-customer" placeholder="例：358">
+      </div>
+      <div class="form-group" style="grid-column: span 2">
+        <label>備考</label>
+        <input type="text" id="f-memo" placeholder="納期指定など">
+      </div>
     </div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <div class="user-info">
-        <span id="user-role">閲覧モード</span>
-      </div>
-      <div class="mode-switcher" id="mode-switcher">
-        <button class="mode-btn active" id="btn-store" onclick="setMode('store')">店舗モード</button>
-        <button class="mode-btn inactive" id="btn-wholesaler" onclick="setMode('wholesaler')">問屋モード</button>
-      </div>
-      <button class="logout-btn" onclick="logout()">ログアウト</button>
+    <div class="form-actions">
+      <button class="btn btn-dark" onclick="addOrder()">登録する</button>
+      <button class="btn btn-secondary" onclick="toggleForm()">キャンセル</button>
     </div>
   </div>
 
-  <div class="main">
-    <div class="stats">
-      <div class="stat-card"><div class="stat-label">全注文</div><div class="stat-value" id="stat-total" style="color:#1c1917">-</div></div>
-      <div class="stat-card"><div class="stat-label">未確認</div><div class="stat-value" id="stat-pending" style="color:#f59e0b">-</div></div>
-      <div class="stat-card"><div class="stat-label">押さえ済み</div><div class="stat-value" id="stat-reserved" style="color:#10b981">-</div></div>
-    </div>
-
-    <div class="action-bar">
-      <button class="btn btn-primary" id="add-btn" onclick="toggleForm()" style="display:none">＋ 注文を追加</button>
-      <button class="btn btn-secondary" onclick="openWeekly()">📋 2週間リスト</button>
-      <div class="sync-status" id="sync-status"><div class="sync-dot"></div>リアルタイム同期中</div>
-    </div>
-
-    <div class="filters">
-      <button class="filter-btn active" onclick="setFilter('all', this)">すべて</button>
-      <button class="filter-btn" onclick="setFilter('pending', this)">未確認</button>
-      <button class="filter-btn" onclick="setFilter('reserved', this)">押さえ済み</button>
-      <button class="filter-btn" onclick="setFilter('ordered', this)">注文済み</button>
-    </div>
-
-    <div class="form-card" id="order-form" style="display:none">
-      <div class="form-title">新規注文登録</div>
-      <div class="form-grid">
-        <div class="form-group">
-          <label>商品名 ＊</label>
-          <input type="text" id="f-product" placeholder="例：デリア左カウチ">
-        </div>
-        <div class="form-group">
-          <label>カラー</label>
-          <input type="text" id="f-model" placeholder="例：CAMやCACAO等">
-        </div>
-        <div class="form-group">
-          <label>数量 ＊</label>
-          <input type="text" id="f-qty" placeholder="例：2">
-        </div>
-        <div class="form-group">
-          <label>お客様番号 ＊</label>
-          <input type="text" id="f-customer" placeholder="例：358">
-        </div>
-        <div class="form-group" style="grid-column: span 2">
-          <label>備考</label>
-          <input type="text" id="f-memo" placeholder="納期指定など">
-        </div>
-      </div>
-      <div class="form-actions">
-        <button class="btn btn-dark" onclick="addOrder()">登録する</button>
-        <button class="btn btn-secondary" onclick="toggleForm()">キャンセル</button>
-      </div>
-    </div>
-
-    <div id="order-list">
-      <div class="loading"><div class="spinner"></div>接続中...</div>
-    </div>
+  <div id="order-list">
+    <div class="loading"><div class="spinner"></div>接続中...</div>
   </div>
 </div>
 
-<!-- 入荷予定日入力モーダル -->
-<div class="modal-overlay center" id="delivery-date-modal" style="display:none">
-  <div class="modal center">
-    <div class="modal-header">
-      <div class="modal-title">📦 入荷予定日を入力</div>
-      <button class="modal-close" onclick="closeDeliveryDateModal()">✕</button>
-    </div>
-    <div class="date-input-group">
-      <label>入荷予定日</label>
-      <input type="date" id="delivery-date-input">
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-dark" onclick="confirmDeliveryDate()">確定</button>
-      <button class="btn btn-secondary" onclick="closeDeliveryDateModal()">キャンセル</button>
-    </div>
-  </div>
-</div>
-
-<!-- 週次リストモーダル -->
+<!-- Weekly modal -->
 <div class="modal-overlay center" id="weekly-modal" style="display:none" onclick="closeWeeklyOutside(event)">
   <div class="modal center">
     <div class="modal-header">
-      <div class="modal-title">📋 2週間注文リスト</div>
+      <div class="modal-title">📋 週次注文リスト</div>
       <button class="modal-close" onclick="closeWeekly()">✕</button>
     </div>
-    <label style="font-size:12px;color:#78716c;display:block;margin-bottom:6px">対象期間を選択</label>
+    <label style="font-size:12px;color:#78716c;display:block;margin-bottom:6px">対象週を選択</label>
     <select class="week-select" id="week-select" onchange="updatePreview()"></select>
-    <div class="weekly-preview" id="weekly-preview">期間を選択してください</div>
+    <div class="weekly-preview" id="weekly-preview">週を選択してください</div>
     <div class="modal-actions">
       <button class="btn btn-dark" id="copy-btn" onclick="copyText()">📋 テキストをコピー</button>
       <button class="btn btn-secondary" onclick="window.print()">🖨️ 印刷</button>
@@ -251,16 +170,7 @@
 
 <div class="toast" id="toast"></div>
 
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('service-worker.js')
-      .then(reg => console.log('Service Worker registered'))
-      .catch(err => console.log('Service Worker registration failed'));
-  });
-}
-</script>
-
+<!-- Firebase SDK -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
   import { getDatabase, ref, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
@@ -285,104 +195,12 @@ if ('serviceWorker' in navigator) {
     ordered:  { label: '注文済み',  color: '#6366f1', bg: '#e0e7ff' },
   };
 
-  const STORE_HASH = 'b6d8a39cad12748e450a36953d0abf9b897e61f6ed92fe4dc12874c84b8aba08';
-  const WHOLESALER_HASH = '0aa48abe93d27b8552d1733dd35270414d480ac071279fdfe14b7116ca7e82c3';
-
-  let userRole = null;
   let mode = 'store';
   let orders = {};
   let filterStatus = 'all';
   let formOpen = false;
-  let pendingOrderId = null; // 入荷予定日設定待ちの注文ID
 
-  async function sha256(str) {
-    const buffer = new TextEncoder().encode(str);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  window.loginStore = async function() {
-    const password = document.getElementById('store-password').value;
-    const hash = await sha256(password);
-    
-    if (hash === STORE_HASH) {
-      userRole = 'store';
-      sessionStorage.setItem('userRole', 'store');
-      showMainApp();
-    } else {
-      document.getElementById('store-error').style.display = 'block';
-      setTimeout(() => {
-        document.getElementById('store-error').style.display = 'none';
-      }, 3000);
-    }
-  };
-
-  window.loginWholesaler = async function() {
-    const password = document.getElementById('wholesaler-password').value;
-    const hash = await sha256(password);
-    
-    if (hash === WHOLESALER_HASH) {
-      userRole = 'wholesaler';
-      sessionStorage.setItem('userRole', 'wholesaler');
-      showMainApp();
-    } else {
-      document.getElementById('wholesaler-error').style.display = 'block';
-      setTimeout(() => {
-        document.getElementById('wholesaler-error').style.display = 'none';
-      }, 3000);
-    }
-  };
-
-  window.loginViewer = function() {
-    userRole = 'viewer';
-    sessionStorage.setItem('userRole', 'viewer');
-    showMainApp();
-  };
-
-  window.logout = function() {
-    userRole = null;
-    sessionStorage.clear();
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('main-app').style.display = 'none';
-  };
-
-  function showMainApp() {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('main-app').style.display = 'block';
-    updateUIForRole();
-    
-    if (userRole === 'wholesaler') {
-      setMode('wholesaler');
-    } else {
-      setMode('store');
-    }
-  }
-
-  function updateUIForRole() {
-    const roleLabel = document.getElementById('user-role');
-    const modeSwitcher = document.getElementById('mode-switcher');
-    
-    if (userRole === 'store') {
-      roleLabel.textContent = '店舗スタッフ';
-      modeSwitcher.style.display = 'none';
-      mode = 'store';
-    } else if (userRole === 'wholesaler') {
-      roleLabel.textContent = '問屋';
-      modeSwitcher.style.display = 'none';
-      mode = 'wholesaler';
-    } else if (userRole === 'viewer') {
-      roleLabel.textContent = '閲覧モード';
-      modeSwitcher.style.display = 'flex';
-    }
-  }
-
-  const savedRole = sessionStorage.getItem('userRole');
-  if (savedRole) {
-    userRole = savedRole;
-    showMainApp();
-  }
-
+  // リアルタイム同期
   onValue(ordersRef, (snapshot) => {
     orders = snapshot.val() || {};
     render();
@@ -392,16 +210,10 @@ if ('serviceWorker' in navigator) {
   });
 
   window.setMode = function(m) {
-    if (userRole === 'store' && m !== 'store') return;
-    if (userRole === 'wholesaler' && m !== 'wholesaler') return;
-    
     mode = m;
     document.getElementById('btn-store').className = 'mode-btn ' + (m === 'store' ? 'active' : 'inactive');
     document.getElementById('btn-wholesaler').className = 'mode-btn ' + (m === 'wholesaler' ? 'active' : 'inactive');
-    
-    const addBtn = document.getElementById('add-btn');
-    addBtn.style.display = (userRole === 'store' && m === 'store') ? '' : 'none';
-    
+    document.getElementById('add-btn').style.display = m === 'store' ? '' : 'none';
     if (formOpen && m !== 'store') window.toggleForm();
     render();
   };
@@ -414,7 +226,6 @@ if ('serviceWorker' in navigator) {
   };
 
   window.toggleForm = function() {
-    if (userRole === 'viewer') return;
     formOpen = !formOpen;
     document.getElementById('order-form').style.display = formOpen ? '' : 'none';
     if (!formOpen) clearForm();
@@ -425,7 +236,6 @@ if ('serviceWorker' in navigator) {
   }
 
   window.addOrder = async function() {
-    if (userRole === 'viewer') return;
     const product  = document.getElementById('f-product').value.trim();
     const model    = document.getElementById('f-model').value.trim();
     const qty      = document.getElementById('f-qty').value.trim();
@@ -445,54 +255,13 @@ if ('serviceWorker' in navigator) {
     window.toggleForm();
   };
 
-  // 入荷予定日入力モーダルを開く
-  window.openDeliveryDateModal = function(orderId) {
-    pendingOrderId = orderId;
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('delivery-date-input').value = today;
-    document.getElementById('delivery-date-modal').style.display = '';
-  };
-
-  // 入荷予定日入力モーダルを閉じる
-  window.closeDeliveryDateModal = function() {
-    pendingOrderId = null;
-    document.getElementById('delivery-date-modal').style.display = 'none';
-  };
-
-  // 入荷予定日を確定
-  window.confirmDeliveryDate = async function() {
-    const deliveryDate = document.getElementById('delivery-date-input').value;
-    if (!deliveryDate) {
-      showToast('⚠ 入荷予定日を選択してください');
-      return;
-    }
-    if (pendingOrderId) {
-      await update(ref(db, 'orders/' + pendingOrderId), { 
-        status: 'reserved',
-        deliveryDate: deliveryDate
-      });
-      showToast('✓ 「押さえ済み」に更新しました');
-      closeDeliveryDateModal();
-    }
-  };
-
   window.updateStatus = async function(id, status) {
-    if (userRole === 'viewer') return;
-    
-    // 問屋が「押さえ済み」にする場合は入荷予定日を入力
-    if (status === 'reserved' && userRole === 'wholesaler') {
-      openDeliveryDateModal(id);
-      return;
-    }
-    
-    // それ以外は通常の更新
     await update(ref(db, 'orders/' + id), { status });
     const label = STATUS[status]?.label || status;
     showToast(`✓ 「${label}」に更新しました`);
   };
 
   window.deleteOrder = async function(id) {
-    if (userRole === 'viewer') return;
     if (!confirm('この注文を削除しますか？')) return;
     await remove(ref(db, 'orders/' + id));
     showToast('削除しました');
@@ -501,12 +270,6 @@ if ('serviceWorker' in navigator) {
   function fmtDT(iso) {
     const d = new Date(iso);
     return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-  }
-
-  function fmtDate(dateStr) {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return `${d.getMonth()+1}/${d.getDate()}`;
   }
 
   function render() {
@@ -528,31 +291,22 @@ if ('serviceWorker' in navigator) {
     list.innerHTML = filtered.map(o => {
       const s = STATUS[o.status];
       let actionBtns = '';
-      
-      if (userRole === 'viewer') {
-        actionBtns = '';
-      } else if (mode === 'wholesaler' && o.status === 'pending' && userRole === 'wholesaler') {
+      if (mode === 'wholesaler' && o.status === 'pending')
         actionBtns = `<button class="btn-green" onclick="updateStatus('${o.id}','reserved')">押さえ済みにする</button>`;
-      } else if (mode === 'wholesaler' && o.status === 'reserved') {
+      else if (mode === 'wholesaler' && o.status === 'reserved')
         actionBtns = `<span style="font-size:11px;color:#10b981">✓ 対応済み</span>`;
-      } else if (mode === 'store' && o.status === 'reserved' && userRole === 'store') {
+      else if (mode === 'store' && o.status === 'reserved')
         actionBtns = `<button class="btn-purple" onclick="updateStatus('${o.id}','ordered')">注文済みにする</button>`;
-      }
 
-      const deleteBtn = (mode === 'store' && userRole === 'store')
+      const deleteBtn = mode === 'store'
         ? `<button class="btn-danger" onclick="deleteOrder('${o.id}')">削除</button>` : '';
-
-      // 入荷予定日表示
-      const deliveryDateBadge = o.deliveryDate 
-        ? `<span class="delivery-date">${fmtDate(o.deliveryDate)}入荷</span>` 
-        : '';
 
       return `
         <div class="order-card" style="border-left-color:${s.color}">
           <div class="order-top">
             <div class="order-info">
               <div class="order-name">${esc(o.productName)}${o.modelNumber ? `<span class="order-model">${esc(o.modelNumber)}</span>` : ''}</div>
-              <span class="badge" style="background:${s.bg};color:${s.color}">${s.label}</span>${deliveryDateBadge}
+              <span class="badge" style="background:${s.bg};color:${s.color}">${s.label}</span>
               <div class="order-meta">
                 <span>数量: <strong>${esc(o.quantity)}</strong></span>
                 <span>お客様: <strong>${esc(o.customerName)}</strong></span>
@@ -573,23 +327,49 @@ if ('serviceWorker' in navigator) {
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
+  // Weekly (2週間ごと・木曜日始まりに完全固定)
   function getWeekKey(iso) {
+    // 日本時間での日付を取得
     const d = new Date(iso);
     const jstDate = new Date(d.getTime() + (9 * 60 * 60 * 1000));
-    const base = new Date('2026-01-02T00:00:00Z');
-    const diffMs = jstDate.getTime() - base.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const periodNumber = Math.floor(diffDays / 14);
-    const periodStartTime = base.getTime() + (periodNumber * 14 * 24 * 60 * 60 * 1000);
-    return new Date(periodStartTime).toISOString().slice(0, 10);
+    const day = jstDate.getUTCDay(); // 0(日)〜6(土)
+   
+    // 木曜日(4)を起点にする計算
+    let diff = day - 4;
+    if (diff < 0) diff += 7;
+   
+    // 直近の木曜日を算出
+    const thursday = new Date(jstDate);
+    thursday.setUTCDate(jstDate.getUTCDate() - diff);
+   
+    // 2026/01/01(木)を基準点にする
+    const base = new Date('2026-01-01T00:00:00Z');
+    const diffTime = thursday.getTime() - base.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+   
+    // 14日周期の開始日を決定（1週間ずれる場合はここを調整）
+    let periodStartDays = Math.floor(diffDays / 14) * 14;
+   
+    // 現在の運用に合わせて1週間分調整
+    const finalStart = new Date(base);
+    finalStart.setUTCDate(base.getUTCDate() + periodStartDays + 7);
+   
+    return finalStart.toISOString().slice(0, 10);
   }
 
   function getWeekLabel(wk) {
-    const d = new Date(wk + "T00:00:00Z");
+    const d = new Date(wk + "T00:00:00Z"); // 文字列を日付オブジェクトに変換
     const end = new Date(d);
-    end.setUTCDate(d.getUTCDate() + 13);
-    return `${d.getUTCMonth()+1}/${d.getUTCDate()}（木）〜 ${end.getUTCMonth()+1}/${end.getUTCDate()}（水）`;
+    end.setUTCDate(d.getUTCDate() + 13); // 13日後は水曜日
+   
+    const m1 = d.getUTCMonth() + 1;
+    const d1 = d.getUTCDate();
+    const m2 = end.getUTCMonth() + 1;
+    const d2 = end.getUTCDate();
+   
+    return `${m1}/${d1}（木）〜 ${m2}/${d2}（水）`;
   }
+
 
   window.openWeekly = function() {
     const arr = Object.values(orders);
@@ -606,7 +386,7 @@ if ('serviceWorker' in navigator) {
 
   window.updatePreview = function() {
     const wk = document.getElementById('week-select').value;
-    document.getElementById('weekly-preview').textContent = wk ? generateText(wk) : '期間を選択してください';
+    document.getElementById('weekly-preview').textContent = wk ? generateText(wk) : '週を選択してください';
   };
 
   function generateText(wk) {
@@ -614,7 +394,7 @@ if ('serviceWorker' in navigator) {
       .sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
     const now = new Date();
     const lines = [
-      `【2週間注文リスト】`,
+      `【週次注文リスト】`,
       `対象期間: ${getWeekLabel(wk)}`,
       `作成日時: ${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`,
       '─'.repeat(36), ''
@@ -622,7 +402,6 @@ if ('serviceWorker' in navigator) {
     arr.forEach((o, i) => {
       lines.push(`${i+1}. ${o.productName}${o.modelNumber ? `（${o.modelNumber}）` : ''}`);
       lines.push(`   数量: ${o.quantity}　お客様: ${o.customerName}`);
-      if (o.deliveryDate) lines.push(`   入荷予定: ${fmtDate(o.deliveryDate)}`);
       if (o.memo) lines.push(`   備考: ${o.memo}`);
       lines.push(`   ステータス: ${STATUS[o.status]?.label || o.status}`);
       lines.push('');
@@ -642,7 +421,7 @@ if ('serviceWorker' in navigator) {
       document.body.appendChild(ta); ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-    });
+    }).finally ? null : null;
     const btn = document.getElementById('copy-btn');
     btn.textContent = '✓ コピー完了！';
     setTimeout(() => btn.textContent = '📋 テキストをコピー', 2000);
@@ -655,6 +434,9 @@ if ('serviceWorker' in navigator) {
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
   }
+
+  // 初期表示
+  window.setMode('store');
 </script>
 </body>
 </html>
