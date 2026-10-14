@@ -28,8 +28,8 @@ body{font-family:'Noto Sans JP','Hiragino Sans',sans-serif;background:#f8f7f4;co
 .action-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
 .sync-status{font-size:12px;color:#10b981;margin-left:auto}
 .notice{background:#fef3c7;color:#92400e;font-size:13px;padding:8px 12px;border-radius:8px;margin-bottom:12px}
-.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
-.filter-btn{padding:5px 12px;border-radius:20px;border:1px solid #d6d3d1;cursor:pointer;font-size:12px;font-family:inherit;background:#fff;color:#78716c}
+.filters{display:flex;gap:4px;flex-wrap:nowrap;overflow-x:auto;margin-bottom:14px;scrollbar-width:none}.filters::-webkit-scrollbar{display:none}
+.filter-btn{padding:6px 9px;border-radius:20px;border:1px solid #d6d3d1;cursor:pointer;font-size:11px;white-space:nowrap;flex-shrink:0;font-family:inherit;background:#fff;color:#78716c}
 .filter-btn.active{background:#1c1917;color:#fff;border-color:#1c1917;font-weight:700}
 .form-card{background:#fff;border-radius:12px;border:1px solid #e7e5e4;padding:16px;margin-bottom:14px}
 .form-title{font-weight:700;font-size:15px;margin-bottom:14px}
@@ -153,7 +153,7 @@ const STATUS = {
 // 表示の言い回し（店舗・閲覧：従来どおり／問屋：問屋用の言い方）
 const LABELS = {
   store:      { pending: '未確認', reserved: '押さえ済み', ordered: '注文済み' },
-  wholesaler: { pending: '未確定', reserved: '入荷確定分押さえ済み', ordered: '次回出荷確定分' }
+  wholesaler: { pending: '未確定', reserved: '入荷予定分抑え済み', ordered: '次回出荷分' }
 };
 const lab = st => (LABELS[role] || LABELS.store)[st];
 function applyLabels() {
