@@ -71,8 +71,8 @@ input,select{width:100%;padding:9px 12px;border:1px solid #d6d3d1;border-radius:
   <div class="notice" id="notice">閲覧のみのモードです。注文の登録や変更をするには、ログインしてください。</div>
   <div class="stats">
     <div class="stat-card"><div class="stat-label">全注文</div><div class="stat-value" id="stat-total">-</div></div>
-    <div class="stat-card"><div class="stat-label">未確認</div><div class="stat-value" id="stat-pending" style="color:#f59e0b">-</div></div>
-    <div class="stat-card"><div class="stat-label">押さえ済み</div><div class="stat-value" id="stat-reserved" style="color:#10b981">-</div></div>
+    <div class="stat-card"><div class="stat-label" id="sl-pending">未確認</div><div class="stat-value" id="stat-pending" style="color:#f59e0b">-</div></div>
+    <div class="stat-card"><div class="stat-label" id="sl-reserved">押さえ済み</div><div class="stat-value" id="stat-reserved" style="color:#10b981">-</div></div>
   </div>
   <div class="action-bar">
     <button class="btn btn-primary" id="add-btn" style="display:none" onclick="toggleForm()">＋ 注文を追加</button>
@@ -81,9 +81,9 @@ input,select{width:100%;padding:9px 12px;border:1px solid #d6d3d1;border-radius:
   </div>
   <div class="filters">
     <button class="filter-btn active" onclick="setFilter('all',this)">すべて</button>
-    <button class="filter-btn" onclick="setFilter('pending',this)">未確認</button>
-    <button class="filter-btn" onclick="setFilter('reserved',this)">押さえ済み</button>
-    <button class="filter-btn" onclick="setFilter('ordered',this)">注文済み</button>
+    <button class="filter-btn" id="ft-pending" onclick="setFilter('pending',this)">未確認</button>
+    <button class="filter-btn" id="ft-reserved" onclick="setFilter('reserved',this)">押さえ済み</button>
+    <button class="filter-btn" id="ft-ordered" onclick="setFilter('ordered',this)">注文済み</button>
   </div>
   <div class="form-card" id="order-form" style="display:none">
     <div class="form-title">新規注文登録</div>
@@ -146,10 +146,20 @@ const db = getDatabase(app), auth = getAuth(app), ordersRef = ref(db, 'orders');
 // ログイン用メールアドレス（Firebaseのユーザー登録と一致させてください）
 const EMAILS = { store: 'store@django.local', wholesaler: 'wholesaler@django.local' };
 const STATUS = {
-  pending:  { label: '未確認',    color: '#f59e0b', bg: '#fef3c7' },
-  reserved: { label: '押さえ済み', color: '#10b981', bg: '#d1fae5' },
-  ordered:  { label: '注文済み',  color: '#6366f1', bg: '#e0e7ff' },
+  pending:  { color: '#f59e0b', bg: '#fef3c7' },
+  reserved: { color: '#10b981', bg: '#d1fae5' },
+  ordered:  { color: '#6366f1', bg: '#e0e7ff' },
 };
+// 表示の言い回し（店舗・閲覧：従来どおり／問屋：問屋用の言い方）
+const LABELS = {
+  store:      { pending: '未確認', reserved: '押さえ済み', ordered: '注文済み' },
+  wholesaler: { pending: '未確定', reserved: '入荷確定分押さえ済み', ordered: '次回出荷確定分' }
+};
+const lab = st => (LABELS[role] || LABELS.store)[st];
+function applyLabels() {
+  ['pending', 'reserved', 'ordered'].forEach(k => { $('ft-' + k).textContent = lab(k); });
+  $('sl-pending').textContent = lab('pending'); $('sl-reserved').textContent = lab('reserved');
+}
 let role = null, orders = {}, filterStatus = 'all', formOpen = false;
 const $ = id => document.getElementById(id);
 
@@ -161,7 +171,7 @@ onAuthStateChanged(auth, user => {
   $('notice').style.display = role ? 'none' : '';
   $('add-btn').style.display = role === 'store' ? '' : 'none';
   if (formOpen && role !== 'store') window.toggleForm();
-  render();
+  applyLabels(); render();
 });
 
 onValue(ordersRef, snap => {
@@ -206,7 +216,7 @@ window.addOrder = async function() {
   }), '✓ 注文を登録しました');
   if (ok) window.toggleForm();
 };
-window.updateStatus = (id, status) => safe(() => update(ref(db, 'orders/' + id), { status }), `✓ 「${STATUS[status].label}」に更新しました`);
+window.updateStatus = (id, status) => safe(() => update(ref(db, 'orders/' + id), { status }), `✓ 「${lab(status)}」に更新しました`);
 window.deleteOrder = async id => { if (confirm('この注文を削除しますか？')) await safe(() => remove(ref(db, 'orders/' + id)), '削除しました'); };
 
 const fmtDT = iso => { const d = new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
@@ -222,12 +232,12 @@ function render() {
   $('order-list').innerHTML = f.map(o => {
     const s = STATUS[o.status] || STATUS.pending;
     let btn = '';
-    if (role === 'wholesaler' && o.status === 'pending') btn = `<button class="btn-green" onclick="updateStatus('${o.id}','reserved')">押さえ済みにする</button>`;
-    else if (role === 'store' && o.status === 'reserved') btn = `<button class="btn-purple" onclick="updateStatus('${o.id}','ordered')">注文済みにする</button>`;
+    if (role === 'wholesaler' && o.status === 'pending') btn = `<button class="btn-green" onclick="updateStatus('${o.id}','reserved')">${lab('reserved')}にする</button>`;
+    else if (role === 'store' && o.status === 'reserved') btn = `<button class="btn-purple" onclick="updateStatus('${o.id}','ordered')">${lab('ordered')}にする</button>`;
     const del = role === 'store' ? `<button class="btn-danger" onclick="deleteOrder('${o.id}')">削除</button>` : '';
     return `<div class="order-card" style="border-left-color:${s.color}"><div class="order-top"><div>
       <div class="order-name">${esc(o.productName)}${o.modelNumber ? `<span class="order-model">${esc(o.modelNumber)}</span>` : ''}</div>
-      <span class="badge" style="background:${s.bg};color:${s.color}">${s.label}</span>
+      <span class="badge" style="background:${s.bg};color:${s.color}">${lab(o.status)}</span>
       <div class="order-meta"><span>数量: <strong>${esc(o.quantity)}</strong></span><span>お客様: <strong>${esc(o.customerName)}</strong></span></div>
       ${o.memo ? `<div class="order-memo">備考: ${esc(o.memo)}</div>` : ''}
       <div class="order-time">登録: ${fmtDT(o.createdAt)}</div></div>
@@ -263,7 +273,7 @@ function generateText(wk) {
   arr.forEach((o, i) => {
     L.push(`${i+1}. ${o.productName}${o.modelNumber ? `（${o.modelNumber}）` : ''}`, `   数量: ${o.quantity}　お客様: ${o.customerName}`);
     if (o.memo) L.push(`   備考: ${o.memo}`);
-    L.push(`   ステータス: ${STATUS[o.status]?.label || o.status}`, '');
+    L.push(`   ステータス: ${lab(o.status) || o.status}`, '');
   });
   L.push('─'.repeat(36), `合計 ${arr.length} 件`);
   return L.join('\n');
