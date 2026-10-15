@@ -162,6 +162,13 @@ const lab = st => (LABELS[role] || LABELS.store)[st];
 function applyLabels() {
   ['pending', 'reserved', 'nextship', 'ordered'].forEach(k => { $('ft-' + k).textContent = lab(k); });
   $('sl-pending').textContent = lab('pending');
+  // 問屋モードでは「注文済み」タブを非表示にする
+  $('ft-ordered').style.display = role === 'wholesaler' ? 'none' : '';
+  if (role === 'wholesaler' && filterStatus === 'ordered') {
+    filterStatus = 'all';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.filter-btn').classList.add('active');
+  }
 }
 let role = null, orders = {}, filterStatus = 'all', formOpen = false;
 const $ = id => document.getElementById(id);
