@@ -59,7 +59,7 @@ input,select{width:100%;padding:9px 12px;border:1px solid #d6d3d1;border-radius:
 .modal-actions{display:flex;gap:10px}.modal-actions .btn{flex:1}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1c1917;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;font-weight:600;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
-@media print{.header,.action-bar,.filters,.stats,.main>*:not(#x){display:none!important}.modal-overlay.on{position:static;display:block;background:none}.modal-actions,.modal-close,select{display:none}}
+@media print{.header,.action-bar,.filters,.stats,.main>*:not(#x){display:none!important}.modal-overlay.on{position:static;display:block;background:none}.modal-actions,.modal-close,select,#cycle-btn{display:none}}
 </style>
 </head>
 <body>
@@ -125,13 +125,25 @@ input,select{width:100%;padding:9px 12px;border:1px solid #d6d3d1;border-radius:
       <button class="btn btn-dark" id="copy-btn" onclick="copyText()">📋 テキストをコピー</button>
       <button class="btn btn-secondary" onclick="window.print()">🖨️ 印刷</button>
     </div>
+    <button class="btn btn-secondary" id="cycle-btn" style="display:none;width:100%;margin-top:10px" onclick="openCycle()">⚙ 入荷サイクルの日付を調整</button>
+  </div>
+</div>
+<div class="modal-overlay" id="cycle-modal" onclick="if(event.target.id==='cycle-modal')closeCycle()">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">入荷サイクルの日付を調整</div><button class="modal-close" onclick="closeCycle()">✕</button></div>
+    <p style="font-size:13px;color:#57534e;margin-bottom:12px;line-height:1.6">入荷のサイクルがずれたときに、新しいサイクルの開始日を追加します。追加した日から、14日ごとに区切られます。それより前の期間は、そのまま変わりません。</p>
+    <label class="lbl">新しいサイクルの開始日</label>
+    <input type="date" id="c-date">
+    <div class="form-actions"><button class="btn btn-dark" style="flex:1" onclick="addCycle()">この日から開始する</button></div>
+    <label class="lbl" style="margin-top:16px">追加した開始日</label>
+    <div id="c-list"></div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, onValue, push, update, remove, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const app = initializeApp({
@@ -180,6 +192,8 @@ onAuthStateChanged(auth, user => {
   $('auth-btn').textContent = role ? 'ログアウト' : 'ログイン';
   $('notice').style.display = role ? 'none' : '';
   $('add-btn').style.display = role === 'store' ? '' : 'none';
+  $('cycle-btn').style.display = role === 'store' ? '' : 'none';
+  if (role !== 'store') window.closeCycle();
   if (formOpen && role !== 'store') window.toggleForm();
   applyLabels(); render();
 });
@@ -256,26 +270,58 @@ function render() {
   }).join('');
 }
 
-// 週次（2週間ごと・木曜始まり）
-function getWeekKey(iso) {
+// 週次（2週間ごと。入荷のズレは「サイクル開始日」で調整）
+let starts = [];
+const DAY = 86400000, DOW = ['日','月','火','水','木','金','土'];
+const toMs = k => Date.parse(k + 'T00:00:00Z');
+const toKey = ms => new Date(ms).toISOString().slice(0, 10);
+function autoKey(iso) {
   const jst = new Date(new Date(iso).getTime() + 9 * 3600000);
   let diff = jst.getUTCDay() - 4; if (diff < 0) diff += 7;
   const thu = new Date(jst); thu.setUTCDate(jst.getUTCDate() - diff);
   const base = new Date('2026-01-01T00:00:00Z');
-  const days = Math.floor((thu.getTime() - base.getTime()) / 86400000);
+  const days = Math.floor((thu.getTime() - base.getTime()) / DAY);
   const start = new Date(base); start.setUTCDate(base.getUTCDate() + Math.floor(days / 14) * 14 + 7);
   return start.toISOString().slice(0, 10);
 }
-function getWeekLabel(wk) {
-  const d = new Date(wk + 'T00:00:00Z'), e = new Date(d); e.setUTCDate(d.getUTCDate() + 13);
-  return `${d.getUTCMonth()+1}/${d.getUTCDate()}（木）〜 ${e.getUTCMonth()+1}/${e.getUTCDate()}（水）`;
+function getWeekKey(iso) {
+  // 従来どおり、登録日の1週間後を基準にサイクルへ振り分ける
+  const d = toKey(new Date(iso).getTime() + 9 * 3600000 + 7 * DAY);
+  let a = null; starts.forEach(x => { if (x <= d) a = x; });
+  if (!a) return autoKey(iso);
+  return toKey(toMs(a) + Math.floor((toMs(d) - toMs(a)) / (14 * DAY)) * 14 * DAY);
 }
+function getWeekLabel(wk) {
+  const sMs = toMs(wk); let eMs = sMs + 13 * DAY;
+  starts.forEach(x => { const m = toMs(x); if (m > sMs && m - DAY < eMs) eMs = m - DAY; });
+  const d = new Date(sMs), e = new Date(eMs);
+  return `${d.getUTCMonth()+1}/${d.getUTCDate()}（${DOW[d.getUTCDay()]}）〜 ${e.getUTCMonth()+1}/${e.getUTCDate()}（${DOW[e.getUTCDay()]}）`;
+}
+onValue(ref(db, 'settings/cycleStarts'), snap => {
+  starts = Object.keys(snap.val() || {}).sort();
+  renderCycle();
+  if ($('weekly-modal').classList.contains('on')) window.openWeekly();
+});
 window.openWeekly = function() {
-  const weeks = [...new Set(Object.values(orders).map(o => getWeekKey(o.createdAt)))].sort().reverse();
-  if (!weeks.length) weeks.push(getWeekKey(new Date().toISOString()));
+  const prev = $('week-select').value;
+  const weeks = [...new Set([...Object.values(orders).map(o => getWeekKey(o.createdAt)), getWeekKey(new Date().toISOString())])].sort().reverse();
   $('week-select').innerHTML = weeks.map(w => `<option value="${w}">${getWeekLabel(w)}</option>`).join('');
+  if (weeks.includes(prev)) $('week-select').value = prev;
   window.updatePreview(); $('weekly-modal').classList.add('on');
 };
+function renderCycle() {
+  $('c-list').innerHTML = starts.length
+    ? starts.map(k => `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #e7e5e4"><span>${k.replace(/-/g, '/')} 〜</span><button class="btn-danger" onclick="removeCycle('${k}')">削除</button></div>`).join('')
+    : '<div style="font-size:13px;color:#a8a29e">まだありません（自動の2週間サイクルを使っています）</div>';
+}
+window.openCycle = () => { renderCycle(); $('cycle-modal').classList.add('on'); };
+window.closeCycle = () => $('cycle-modal').classList.remove('on');
+window.addCycle = async function() {
+  const v = $('c-date').value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) { showToast('⚠ 日付を選んでください'); return; }
+  if (await safe(() => set(ref(db, 'settings/cycleStarts/' + v), true), '✓ サイクルの開始日を追加しました')) $('c-date').value = '';
+};
+window.removeCycle = async k => { if (confirm(k.replace(/-/g, '/') + ' の開始日を削除しますか？')) await safe(() => remove(ref(db, 'settings/cycleStarts/' + k)), '削除しました'); };
 window.closeWeekly = () => $('weekly-modal').classList.remove('on');
 window.updatePreview = () => { const wk = $('week-select').value; $('weekly-preview').textContent = wk ? generateText(wk) : '週を選択してください'; };
 function generateText(wk) {
