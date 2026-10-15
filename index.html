@@ -24,6 +24,7 @@ body{font-family:'Noto Sans JP','Hiragino Sans',sans-serif;background:#f8f7f4;co
 .btn-dark{background:#1c1917;color:#fff}
 .btn-danger{background:#fee2e2;color:#dc2626;padding:6px 12px;font-size:12px;font-weight:600;border:none;border-radius:6px;cursor:pointer;font-family:inherit}
 .btn-green,.btn-purple{color:#fff;padding:8px 14px;font-size:13px;font-weight:700;border:none;border-radius:6px;cursor:pointer;font-family:inherit}
+.btn-sky{background:#0ea5e9;color:#fff;padding:8px 14px;font-size:13px;font-weight:700;border:none;border-radius:6px;cursor:pointer;font-family:inherit}
 .btn-green{background:#10b981}.btn-purple{background:#6366f1}
 .action-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
 .sync-status{font-size:12px;color:#10b981;margin-left:auto}
@@ -71,7 +72,7 @@ input,select{width:100%;padding:9px 12px;border:1px solid #d6d3d1;border-radius:
   <div class="notice" id="notice">閲覧のみのモードです。注文の登録や変更をするには、ログインしてください。</div>
   <div class="stats">
     <div class="stat-card"><div class="stat-label">全注文</div><div class="stat-value" id="stat-total">-</div></div>
-    <div class="stat-card"><div class="stat-label" id="sl-pending">未確認</div><div class="stat-value" id="stat-pending" style="color:#f59e0b">-</div></div>
+    <div class="stat-card"><div class="stat-label" id="sl-pending">未確定</div><div class="stat-value" id="stat-pending" style="color:#f59e0b">-</div></div>
     <div class="stat-card"><div class="stat-label" id="sl-reserved">押さえ済み</div><div class="stat-value" id="stat-reserved" style="color:#10b981">-</div></div>
   </div>
   <div class="action-bar">
@@ -81,8 +82,9 @@ input,select{width:100%;padding:9px 12px;border:1px solid #d6d3d1;border-radius:
   </div>
   <div class="filters">
     <button class="filter-btn active" onclick="setFilter('all',this)">すべて</button>
-    <button class="filter-btn" id="ft-pending" onclick="setFilter('pending',this)">未確認</button>
-    <button class="filter-btn" id="ft-reserved" onclick="setFilter('reserved',this)">押さえ済み</button>
+    <button class="filter-btn" id="ft-pending" onclick="setFilter('pending',this)">未確定</button>
+    <button class="filter-btn" id="ft-reserved" onclick="setFilter('reserved',this)">入荷確定分押さえ済み</button>
+    <button class="filter-btn" id="ft-nextship" onclick="setFilter('nextship',this)">次回出荷確定分</button>
     <button class="filter-btn" id="ft-ordered" onclick="setFilter('ordered',this)">注文済み</button>
   </div>
   <div class="form-card" id="order-form" style="display:none">
@@ -148,17 +150,18 @@ const EMAILS = { store: 'store@django.local', wholesaler: 'wholesaler@django.loc
 const STATUS = {
   pending:  { color: '#f59e0b', bg: '#fef3c7' },
   reserved: { color: '#10b981', bg: '#d1fae5' },
+  nextship: { color: '#0ea5e9', bg: '#e0f2fe' },
   ordered:  { color: '#6366f1', bg: '#e0e7ff' },
 };
 // 表示の言い回し（店舗・閲覧：従来どおり／問屋：問屋用の言い方）
 const LABELS = {
-  store:      { pending: '未確認', reserved: '押さえ済み', ordered: '注文済み' },
-  wholesaler: { pending: '未確定', reserved: '入荷予定分抑え済み', ordered: '次回出荷分' }
+  store:      { pending: '未確定', reserved: '入荷確定分押さえ済み', nextship: '次回出荷確定分', ordered: '注文済み' },
+  wholesaler: { pending: '未確定', reserved: '入荷確定分押さえ済み', nextship: '次回出荷確定分', ordered: '注文済み' }
 };
 const lab = st => (LABELS[role] || LABELS.store)[st];
 function applyLabels() {
-  ['pending', 'reserved', 'ordered'].forEach(k => { $('ft-' + k).textContent = lab(k); });
-  $('sl-pending').textContent = lab('pending'); $('sl-reserved').textContent = lab('reserved');
+  ['pending', 'reserved', 'nextship', 'ordered'].forEach(k => { $('ft-' + k).textContent = lab(k); });
+  $('sl-pending').textContent = lab('pending');
 }
 let role = null, orders = {}, filterStatus = 'all', formOpen = false;
 const $ = id => document.getElementById(id);
@@ -226,14 +229,14 @@ function render() {
   const arr = Object.entries(orders).map(([id, o]) => ({ id, ...o })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   $('stat-total').textContent = arr.length;
   $('stat-pending').textContent = arr.filter(o => o.status === 'pending').length;
-  $('stat-reserved').textContent = arr.filter(o => o.status === 'reserved').length;
+  $('stat-reserved').textContent = arr.filter(o => o.status === 'reserved' || o.status === 'nextship').length;
   const f = filterStatus === 'all' ? arr : arr.filter(o => o.status === filterStatus);
   if (!f.length) { $('order-list').innerHTML = '<div class="empty">📦<br>注文がありません</div>'; return; }
   $('order-list').innerHTML = f.map(o => {
     const s = STATUS[o.status] || STATUS.pending;
     let btn = '';
-    if (role === 'wholesaler' && o.status === 'pending') btn = `<button class="btn-green" onclick="updateStatus('${o.id}','reserved')">${lab('reserved')}にする</button>`;
-    else if (role === 'store' && o.status === 'reserved') btn = `<button class="btn-purple" onclick="updateStatus('${o.id}','ordered')">${lab('ordered')}にする</button>`;
+    if (role === 'wholesaler' && o.status === 'pending') btn = `<button class="btn-green" onclick="updateStatus('${o.id}','reserved')">${lab('reserved')}にする</button><button class="btn-sky" onclick="updateStatus('${o.id}','nextship')">${lab('nextship')}にする</button>`;
+    else if (role === 'store' && (o.status === 'reserved' || o.status === 'nextship')) btn = `<button class="btn-purple" onclick="updateStatus('${o.id}','ordered')">${lab('ordered')}にする</button>`;
     const del = role === 'store' ? `<button class="btn-danger" onclick="deleteOrder('${o.id}')">削除</button>` : '';
     return `<div class="order-card" style="border-left-color:${s.color}"><div class="order-top"><div>
       <div class="order-name">${esc(o.productName)}${o.modelNumber ? `<span class="order-model">${esc(o.modelNumber)}</span>` : ''}</div>
